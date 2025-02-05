@@ -1,10 +1,41 @@
+version: '3.8'
+
 services:
+  qdrant:
+    image: qdrant/qdrant:v1.8.0
+    platform: linux/arm64/v8
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    ports:
+      - "6333:6333"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - perplexica-network
+
   searxng:
     image: docker.io/searxng/searxng:latest
+    platform: linux/arm64/v8
     volumes:
       - ./searxng:/etc/searxng:rw
     ports:
       - 4000:8080
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - perplexica-network
     restart: unless-stopped
@@ -14,16 +45,30 @@ services:
       context: .
       dockerfile: backend.dockerfile
     image: itzcrazykns1337/perplexica-backend:main
+    platform: linux/arm64/v8
     environment:
       - SEARXNG_API_URL=http://searxng:8080
+      - QDRANT_URL=http://qdrant:6333
+      - MLX_ENABLE_METAL=1
+      - MLX_USE_METAL_GPU=1
+      - METAL_DEVICE_WRAPPER_TYPE=1
     depends_on:
       - searxng
+      - qdrant
     ports:
       - 3001:3001
     volumes:
-      - backend-dbstore:/home/perplexica/data
-      - uploads:/home/perplexica/uploads
-      - ./config.toml:/home/perplexica/config.toml
+      - backend-dbstore:/app/data
+      - uploads:/app/uploads
+      - ./config.toml:/app/config.toml
+      - /tmp/perplexica-temp:/app/temp
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+    ipc: host
+    privileged: true
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     networks:
@@ -38,17 +83,187 @@ services:
         - NEXT_PUBLIC_API_URL=http://127.0.0.1:3001/api
         - NEXT_PUBLIC_WS_URL=ws://127.0.0.1:3001
     image: itzcrazykns1337/perplexica-frontend:main
+    platform: linux/arm64/v8
     depends_on:
       - perplexica-backend
     ports:
       - 3000:3000
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     networks:
       - perplexica-network
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    platform: linux/arm64/v8
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - perplexica-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    platform: linux/arm64/v8
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=perplexica
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3002:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    depends_on:
+      - prometheus
+    networks:
+      - perplexica-network
+
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    platform: linux/arm64/v8
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - perplexica-network
+
+  local-training:
+    build:
+      context: .
+      dockerfile: training.dockerfile
+    platform: linux/arm64/v8
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - MLX_ENABLE_METAL=1
+      - MLX_USE_METAL_GPU=1
+      - METAL_DEVICE_WRAPPER_TYPE=1
+      - QDRANT_URL=http://qdrant:6333
+    devices:
+      - /dev/mlx0:/dev/mlx0
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - perplexica-network
+    depends_on:
+      - qdrant
+      - prometheus
+    restart: unless-stopped
+
+  ocr-service:
+    build:
+      context: .
+      dockerfile: ocr.dockerfile
+    platform: linux/arm64/v8
+    volumes:
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+    ports:
+      - "8082:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - perplexica-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.0
+    platform: linux/arm64/v8
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki:/etc/loki
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - perplexica-network
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    platform: linux/arm64/v8
+    volumes:
+      - ./logs:/var/log
+      - ./promtail:/etc/promtail
+    command: -config.file=/etc/promtail/config.yml
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      - loki
+    networks:
+      - perplexica-network
+
 networks:
   perplexica-network:
+    driver: bridge
+    internal: false
 
 volumes:
   backend-dbstore:
+    driver: local
   uploads:
+    driver: local
+  qdrant-storage:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

@@ -1,6 +1,6 @@
 import express from 'express';
 import logger from '../utils/logger';
-import db from '../db/index';
+import { db } from '../db/index';
 import { eq } from 'drizzle-orm';
 import { chats, messages } from '../db/schema';
 

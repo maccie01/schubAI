@@ -37,10 +37,10 @@ const upload = multer({ storage });
 router.post(
   '/',
   upload.fields([
-    { name: 'files' },
+    { name: 'files', maxCount: 10 },
     { name: 'embedding_model', maxCount: 1 },
     { name: 'embedding_model_provider', maxCount: 1 },
-  ]),
+  ]) as unknown as express.RequestHandler,
   async (req, res) => {
     try {
       const { embedding_model, embedding_model_provider } = req.body;

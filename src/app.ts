@@ -5,6 +5,7 @@ import http from 'http';
 import routes from './routes';
 import { getPort } from './config';
 import logger from './utils/logger';
+import { metricsMiddleware, metricsHandler } from './utils/metrics';
 
 const port = getPort();
 
@@ -17,6 +18,35 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Add metrics middleware to all routes
+app.use(metricsMiddleware());
+
+// Health check endpoint
+app.get('/health', async (_, res) => {
+  try {
+    // Check system health
+    const systemHealth = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+    };
+
+    // Return health status
+    res.status(200).json(systemHealth);
+  } catch (error) {
+    logger.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Metrics endpoint
+app.get('/metrics', metricsHandler);
 
 app.use('/api', routes);
 app.get('/api', (_, res) => {

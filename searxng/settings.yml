@@ -1,17 +1,104 @@
 use_default_settings: true
 
 general:
-  instance_name: 'searxng'
+  debug: false
+  instance_name: "Perplexica SearXNG"
+  contact_url: false
+  enable_metrics: true
 
 search:
+  safe_search: 0
   autocomplete: 'google'
+  default_lang: 'en'
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
   formats:
     - html
     - json
+  allowed_urls:
+    - http://127.0.0.1:3001
+    - http://localhost:3001
 
 server:
-  secret_key: 'a2fb23f1b02e6ee83875b09826990de0f6bd908b6638e8c10277d415f6ab852b' # Is overwritten by ${SEARXNG_SECRET}
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "change_me_before_production"
+  base_url: http://localhost:8080/
+  image_proxy: false
+  http_protocol_version: "1.0"
+  method: "GET"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-XSS-Protection: 1; mode=block
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
 
 engines:
-  - name: wolframalpha
+  - name: google
+    engine: google
+    shortcut: g
     disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: w
+    disabled: false
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bn
+    disabled: false
+
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gs
+    disabled: false
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: ax
+    disabled: false
+
+  - name: pubmed
+    engine: pubmed
+    shortcut: pm
+    disabled: false
+
+  - name: wolframalpha
+    engine: wolframalpha_noapi
+    shortcut: wa
+    disabled: false
+
+  - name: youtube
+    engine: youtube_noapi
+    shortcut: yt
+    disabled: false
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    disabled: false
+
+ui:
+  static_path: ""
+  templates_path: ""
+  default_theme: simple
+  default_locale: en
+  query_in_title: false
+  results_on_new_tab: false
+
+redis:
+  url: false
+
+outgoing:
+  request_timeout: 3.0
+  max_request_timeout: 10.0
+  pool_connections: 100
+  pool_maxsize: 10
+  enable_http2: true

@@ -1,0 +1,131 @@
+You are tasked with extending Perplexica in Docker with these core objectives:
+
+# DOCKER IMPERATIVES
+1. All components except Ollama/local models must run in containers
+2. ARM64-optimized multi-stage builds for M2 Pro
+3. Resource-constrained services:
+   - RAG: 12GB RAM limit
+   - Local Training: 8GB RAM limit
+4. Required services:
+   - qdrant:1.8.0-arm64
+   - qwen-ocr:latest-arm
+   - crawl4ai-processor:2.4
+   - training-orchestrator:custom
+
+# IMPLEMENTATION PROTOCOL
+1. ALWAYS check `important.mdc` first:
+   - Read entire history
+   - Identify failed approaches
+   - Continue from last valid state
+2. For each task:
+   a) Create Dockerfile with:
+      - MLX GPU passthrough (`--device /dev/mlx0`)
+      - Rosetta 2 emulation layer
+      - BuildKit caching
+   b) Update docker-compose.yml:
+      - ARM64 service definitions
+      - Shared volumes: /train/data, /models
+      - Network: perplexica-training
+   c) Implement healthchecks for container dependencies
+3. Mandatory tracking in `important.mdc`:
+   - Timestamped change records
+   - Docker build errors/resolutions
+   - ARM-specific dependency conflicts
+   - Resource usage patterns
+
+# CORE COMPONENT STRUCTURE
+
+## Training Module Routes (/train/*)
+```python
+# Container-aware route template
+@app.route('/train/<mode>', methods=['POST'])
+def training_endpoint(mode):
+    # Mode: 'rag' or 'local'
+    if mode == 'local':
+        validate_docker_resource_limits('local_train')
+    # [Implementation logic]
+```
+
+## Dockerized Services Architecture
+```yaml
+# docker-compose.yml partial
+services:
+  rag-processor:
+    platform: linux/arm64
+    build:
+      context: ./rag
+      args:
+        MLX_VERSION: 0.8
+    devices:
+      - "/dev/mlx0:/dev/mlx0"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 12G
+
+  local-trainer:
+    platform: linux/arm64  
+    build:
+      context: ./local_train
+      target: m2-optimized
+    volumes:
+      - ./models:/models
+```
+
+# REQUIRED INTEGRATIONS
+1. OCR Processing Flow:
+   - User upload → S3 temp storage → OCR container → Text extraction → RAG pipeline
+2. Web Scraping Path:
+   - URL input → Crawl4AI container → Sanitization → /train/data mount
+3. Training Monitoring:
+   - Container metrics → Prometheus endpoint → Grafana dashboard
+   - Log aggregation via Loki
+
+# ERROR HANDLING RULES
+1. Implement automatic fallback:
+   - GPU failure → CPU-only mode with resource scaling
+   - OCR failure → manual text entry fallback
+2. Validate after EACH change:
+   - Docker build success
+   - Service interoperability
+   - M2 Pro resource consumption
+3. On error:
+   - Rollback to last stable commit
+   - Document failure in `important.mdc`
+   - Propose 3 alternative approaches
+
+# UI REQUIREMENTS
+1. Training Dashboard Must Show:
+   - Container resource allocation
+   - Active Docker services
+   - Training pipeline status
+2. Dual-column Layout:
+   - Left: Docker service controls
+   - Right: Training metrics/visualization
+3. Warning Indicators For:
+   - Memory overcommit
+   - GPU utilization >85%
+   - Container health status
+
+Start by initializing `important.mdc` with timestamped project genesis entry.
+
+
+the project should look like this:
+        Docker Services:
+        ├── Training Core
+        │   ├── RAG Processor (Python/MLX)
+        │   ├── Local Trainer (Swift/MLX)
+        │   └── Model Registry
+        ├── Web Scraper
+        │   ├── Crawl4AI Integration
+        │   └── Data Sanitizer
+        └── Support Services
+            ├── Qdrant VectorDB
+            ├── OCR Service (Qwen)
+            └── Metrics Collector
+
+        Host Services (Non-Containerized):
+        - Ollama Inference
+        - Local Model Cache
+

@@ -2,6 +2,7 @@
 PORT = 3001 # Port to run the server on
 SIMILARITY_MEASURE = "cosine" # "cosine" or "dot"
 KEEP_ALIVE = "5m" # How long to keep Ollama models loaded into memory. (Instead of using -1 use "-1m")
+HOST = "0.0.0.0"
 
 [API_KEYS]
 OPENAI = "" # OpenAI API key - sk-1234567890abcdef1234567890abcdef
@@ -10,5 +11,20 @@ ANTHROPIC = "" # Anthropic API key - sk-ant-1234567890abcdef1234567890abcdef
 GEMINI = "" # Gemini API key - sk-1234567890abcdef1234567890abcdef
 
 [API_ENDPOINTS]
-SEARXNG = "http://localhost:32768" # SearxNG API URL
-OLLAMA = "" # Ollama API URL - http://host.docker.internal:11434
+SEARXNG = "http://searxng:8080" # SearxNG API URL
+OLLAMA = "http://host.docker.internal:11434"
+
+# Database configuration
+DATABASE_URL = "sqlite:///data/perplexica.db"
+
+# External service URLs
+QDRANT = "http://qdrant:6333"
+OCR = "http://ocr-service:8000"
+
+# File storage paths
+UPLOAD_DIR = "/data/uploads"
+MODEL_DIR = "/data/models"
+
+# Logging configuration
+LOG_LEVEL = "info"
+LOG_FORMAT = "json"

@@ -1,3 +1,46 @@
-[botdetection.ip_limit]
-# activate link_token method in the ip_limit method
-link_token = true
+# SearXNG Rate Limiter Configuration
+
+# Global rate limits
+[global]
+max_requests = 50  # Maximum requests per time_window
+time_window = 60   # Time window in seconds
+ban_time = 600     # Ban time in seconds (10 minutes)
+
+# User-specific rate limits based on IP
+[ip]
+max_requests = 30  # Maximum requests per time_window per IP
+time_window = 60   # Time window in seconds
+ban_time = 300     # Ban time in seconds (5 minutes)
+
+# Rate limits for specific endpoints
+[endpoints]
+# Search endpoint
+"/search" = { max_requests = 20, time_window = 60, ban_time = 300 }
+# Autocomplete endpoint
+"/autocomplete" = { max_requests = 30, time_window = 60, ban_time = 300 }
+# Health check endpoint - more permissive
+"/health" = { max_requests = 60, time_window = 60, ban_time = 300 }
+
+# Whitelist for internal services
+[whitelist]
+ips = [
+    "127.0.0.1",          # localhost
+    "172.16.0.0/12",      # Docker internal network
+    "192.168.0.0/16"      # Local network
+]
+
+# Advanced settings
+[settings]
+# Enable memory-based rate limiting
+memory_limit = true
+# Maximum number of tracked IPs
+max_tracked_ips = 10000
+# Clean up interval for expired entries (seconds)
+cleanup_interval = 300
+
+# Logging configuration
+[logging]
+enabled = true
+level = "INFO"
+# Log rate limit events
+log_limits = true

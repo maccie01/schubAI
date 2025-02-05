@@ -3,7 +3,7 @@ import { BaseMessage, AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
-import db from '../db';
+import { db } from '../db/index';
 import { chats, messages as messagesSchema } from '../db/schema';
 import { eq, asc, gt, and } from 'drizzle-orm';
 import crypto from 'crypto';
