@@ -10,6 +10,7 @@ Welcome to the schubAI wiki! This documentation provides comprehensive informati
 - [API Documentation](./API)
 - [Monitoring & Logging](./Monitoring)
 - [Contributing Guidelines](./Contributing)
+- [Issue Tracker](./Issues)
 - [Roadmap](./Roadmap)
 
 ## Project Status
