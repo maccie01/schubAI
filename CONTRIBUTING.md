@@ -1,4 +1,4 @@
-# How to Contribute to Perplexica
+# How to Contribute to schubAI
 
 Hey there, thanks for deciding to contribute to Perplexica. Anything you help with will support the development of Perplexica and will make it better. Let's walk you through the key aspects to ensure your contributions are effective and in harmony with the project's setup.
 
